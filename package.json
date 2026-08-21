@@ -1,0 +1,27 @@
+{
+  "name": "LineUp",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "contract:emit": "prisma-cli contract emit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "@prisma/cli": "^8.0.0-rc.7",
+    "@prisma/cli-engine": "0.2.0",
+    "@types/bun": "latest",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@prisma/orm-postgres": "^8.0.0-rc.4",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}
