@@ -1,21 +1,273 @@
-// use prisma-next
+
+enum Locale {
+  RW
+  EN
+}
+
+enum MemberRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum MemberStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum QueueSessionStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+enum QueueEntryStatus {
+  WAITING
+  NOTIFIED
+  RETURNING
+  SERVING
+  COMPLETED
+  SKIPPED
+  NO_SHOW
+  CANCELLED
+}
+
+enum QueueEventType {
+  JOINED
+  POSITION_CHANGED
+  ETA_RECALCULATED
+  NOTIFIED
+  MARKED_RETURNING
+  SERVICE_STARTED
+  SERVICE_COMPLETED
+  SKIPPED
+  MARKED_NO_SHOW
+  CANCELLED
+}
+
+enum NotificationChannel {
+  SMS
+}
+
+enum NotificationType {
+  QUEUE_JOINED
+  TURN_APPROACHING
+  TURN_READY
+  SIGNIFICANT_DELAY
+  QUEUE_CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?
-  name      String?
-  posts     Post[]
-  createdAt DateTime @default(now())
-  updatedAt temporal.updatedAt()
+  id            Uuid      @id @default(uuid())
+  googleSubject String    @unique @map("google_subject")
+  email         String    @unique
+  displayName   String?   @map("display_name")
+  avatarUrl     String?   @map("avatar_url")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     temporal.updatedAt() @map("updated_at")
+
+  memberships       BusinessMember[]
+  createdBusinesses Business[]           @relation("BusinessCreator")
+  sentInvitations   BusinessInvitation[] @relation("InvitationSender")
+  openedQueues      QueueSession[]        @relation("QueueOpenedBy")
+  assignedEntries   QueueEntry[]          @relation("EntryAssignee")
+  performedEvents   QueueEvent[]          @relation("EventActor")
+
+  @@map("app_users")
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
-  createdAt DateTime @default(now())
-  updatedAt temporal.updatedAt()
+model Business {
+  id            Uuid     @id @default(uuid())
+  name          String
+  slug          String   @unique
+  phone         String?
+  defaultLocale Locale   @default(RW) @map("default_locale")
+  timezone      String   @default("Africa/Kigali")
+  createdById   Uuid     @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     temporal.updatedAt() @map("updated_at")
+
+  createdBy   User                 @relation("BusinessCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships BusinessMember[]
+  invitations BusinessInvitation[]
+  locations   Location[]
+  services    Service[]
+
+  @@index([createdById])
+  @@map("businesses")
 }
+
+model BusinessMember {
+  businessId Uuid         @map("business_id")
+  userId     Uuid         @map("user_id")
+  role       MemberRole   @default(STAFF)
+  status     MemberStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, userId])
+  @@index([userId, status])
+  @@map("business_members")
+}
+
+model BusinessInvitation {
+  id          Uuid       @id @default(uuid())
+  businessId  Uuid       @map("business_id")
+  email       String
+  role        MemberRole @default(STAFF)
+  tokenHash   String     @unique @map("token_hash")
+  expiresAt   DateTime   @map("expires_at")
+  acceptedAt  DateTime?  @map("accepted_at")
+  invitedById Uuid       @map("invited_by_id")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedBy User     @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([businessId, email])
+  @@index([email, expiresAt])
+  @@map("business_invitations")
+}
+
+model Location {
+  id                 Uuid    @id @default(uuid())
+  businessId         Uuid    @map("business_id")
+  name               String
+  address            String?
+  latitude           Decimal?
+  longitude          Decimal?
+  joinCode           String  @unique @map("join_code")
+  defaultWorkerCount Int     @default(1) @map("default_worker_count")
+  isActive           Boolean @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          temporal.updatedAt() @map("updated_at")
+
+  business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  queueSessions QueueSession[]
+
+  @@unique([businessId, name])
+  @@index([businessId, isActive])
+  @@map("locations")
+}
+
+model Service {
+  id                     Uuid    @id @default(uuid())
+  businessId             Uuid    @map("business_id")
+  name                   String
+  defaultDurationMinutes Int     @map("default_duration_minutes")
+  sortOrder              Int     @default(0) @map("sort_order")
+  isActive               Boolean @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              temporal.updatedAt() @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  queueEntries QueueEntry[]
+
+  @@unique([businessId, name])
+  @@index([businessId, isActive, sortOrder])
+  @@map("services")
+}
+
+model QueueSession {
+  id               Uuid               @id @default(uuid())
+  locationId       Uuid               @map("location_id")
+  businessDate     Date               @map("business_date")
+  status           QueueSessionStatus @default(OPEN)
+  workerCount      Int                @default(1) @map("worker_count")
+  nextTicketNumber Int                @default(1) @map("next_ticket_number")
+  openedById       Uuid               @map("opened_by_id")
+  openedAt         DateTime           @default(now()) @map("opened_at")
+  pausedAt         DateTime?          @map("paused_at")
+  closedAt         DateTime?          @map("closed_at")
+
+  location Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  openedBy User         @relation("QueueOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
+  entries  QueueEntry[]
+
+  // One queue session is reused for the whole local business day.
+  @@unique([locationId, businessDate])
+  @@index([locationId, status])
+  @@map("queue_sessions")
+}
+
+model QueueEntry {
+  id                      Uuid             @id @default(uuid())
+  queueSessionId          Uuid             @map("queue_session_id")
+  serviceId               Uuid             @map("service_id")
+  ticketNumber            Int              @map("ticket_number")
+  customerName            String           @map("customer_name")
+  customerPhone           String?          @map("customer_phone")
+  accessTokenHash         String           @unique @map("access_token_hash")
+  status                  QueueEntryStatus @default(WAITING)
+  expectedDurationMinutes Int              @map("expected_duration_minutes")
+  estimatedServiceAt      DateTime?         @map("estimated_service_at")
+  assignedUserId          Uuid?             @map("assigned_user_id")
+  joinedAt                DateTime          @default(now()) @map("joined_at")
+  notifiedAt              DateTime?         @map("notified_at")
+  serviceStartedAt        DateTime?         @map("service_started_at")
+  serviceFinishedAt       DateTime?         @map("service_finished_at")
+  cancelledAt             DateTime?         @map("cancelled_at")
+
+  queueSession QueueSession  @relation(fields: [queueSessionId], references: [id], onDelete: Cascade)
+  service      Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  assignedUser User?         @relation("EntryAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  events       QueueEvent[]
+  notifications Notification[]
+
+  @@unique([queueSessionId, ticketNumber])
+  @@index([queueSessionId, status, joinedAt])
+  @@index([assignedUserId, status])
+  @@index([customerPhone])
+  @@map("queue_entries")
+}
+
+model QueueEvent {
+  id             Uuid           @id @default(uuid())
+  queueEntryId   Uuid           @map("queue_entry_id")
+  eventType      QueueEventType @map("event_type")
+  performedById  Uuid?          @map("performed_by_id")
+  metadata       Jsonb?
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  queueEntry  QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  performedBy User?      @relation("EventActor", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([queueEntryId, createdAt])
+  @@index([performedById])
+  @@map("queue_events")
+}
+
+model Notification {
+  id                Uuid               @id @default(uuid())
+  queueEntryId      Uuid               @map("queue_entry_id")
+  channel           NotificationChannel @default(SMS)
+  type              NotificationType
+  recipient         String
+  language          Locale             @default(RW)
+  dedupeKey         String             @unique @map("dedupe_key")
+  providerMessageId String?            @map("provider_message_id")
+  status            NotificationStatus @default(PENDING)
+  attemptCount      Int                @default(0) @map("attempt_count")
+  lastError         String?            @map("last_error")
+  sentAt            DateTime?          @map("sent_at")
+  deliveredAt       DateTime?          @map("delivered_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([queueEntryId, type])
+  @@map("notifications")
+}
+
+
