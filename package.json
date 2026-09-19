@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "bun --watch src/server.ts",
     "start": "bun src/server.ts",
-    "contract:emit": "prisma-cli contract emit"
+    "contract:emit": "prisma-cli contract emit",
+    "migration:plan": "bunx prisma migration plan --name ",
+    "migration:show": "bunx prisma migration show ",
+    "db:migrate": "bunx prisma db migrate --advance-ref db"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
