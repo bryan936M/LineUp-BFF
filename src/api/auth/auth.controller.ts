@@ -31,6 +31,6 @@ export class AuthController {
     response
       .cookie(this.ACCESS_COOKIE_NAME, accessToken, this.COOKIE_OPTIONS)
       .cookie(this.REFRESH_COOKIE_NAME, refreshToken, this.COOKIE_OPTIONS)
-      .json({ success: true });
+      .redirect('http://localhost:3000');
   }
 }
