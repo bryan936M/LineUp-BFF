@@ -1448,6 +1448,13 @@
                   "plane": "domain"
                 }
               },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
+                  "kind": "scalar"
+                }
+              },
               "workerCount": {
                 "nullable": false,
                 "type": {
@@ -1531,6 +1538,9 @@
                 },
                 "status": {
                   "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updated_at"
                 },
                 "workerCount": {
                   "column": "worker_count"
@@ -3071,6 +3081,11 @@
                     "plane": "storage"
                   }
                 },
+                "updated_at": {
+                  "codecId": "pg/timestamptz@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
                 "worker_count": {
                   "codecId": "pg/int4@1",
                   "default": {
@@ -3357,10 +3372,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "eb9b11856ee3085ac5a4919ca88f46ba14cd0641d122808123be54149f29136e"
+    "storageHash": "4cf8bdc069346b1902043506c01b56761b706d1f40b111580e423ae2d2e602da"
   },
   "execution": {
-    "executionHash": "fd8d4eae193a3a53253727b1b07dbc6f15389b1c122a39ec1f24a442d087bb0e",
+    "executionHash": "84deb49ca5659c8af66f50730c1df3283ee055e6fb7425be4d132a4748a79f72",
     "mutations": {
       "defaults": [
         {
@@ -3492,6 +3507,21 @@
           },
           "ref": {
             "column": "id",
+            "namespace": "public",
+            "table": "queue_sessions"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updated_at",
             "namespace": "public",
             "table": "queue_sessions"
           }

@@ -1,0 +1,111 @@
+[
+  {
+    "id": "column.public.queue_sessions.updated_at",
+    "label": "Add column \"updated_at\" to \"queue_sessions\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updated_at",
+        "table": "queue_sessions"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updated_at\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "queue_sessions",
+          "updated_at"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updated_at\"",
+        "sql": "ALTER TABLE \"public\".\"queue_sessions\" ADD COLUMN \"updated_at\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updated_at\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "queue_sessions",
+          "updated_at"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-queue_sessions-updated_at",
+    "label": "Data transform: backfill-queue_sessions-updated_at",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Run backfill-queue_sessions-updated_at",
+        "sql": "UPDATE \"public\".\"queue_sessions\" SET \"updated_at\" = $1 WHERE \"updated_at\" IS NULL",
+        "params": [
+          null
+        ]
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "alterNullability.setNotNull.queue_sessions.updated_at",
+    "label": "Set NOT NULL on \"queue_sessions\".\"updated_at\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updated_at",
+        "table": "queue_sessions"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updated_at\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "queue_sessions",
+          "updated_at"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"updated_at\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"queue_sessions\" WHERE \"updated_at\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"updated_at\"",
+        "sql": "ALTER TABLE \"public\".\"queue_sessions\" ALTER COLUMN \"updated_at\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updated_at\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "queue_sessions",
+          "updated_at",
+          "NO"
+        ]
+      }
+    ]
+  }
+]

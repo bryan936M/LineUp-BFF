@@ -189,6 +189,8 @@ model QueueSession {
   openedAt         DateTime           @default(now()) @map("opened_at")
   pausedAt         DateTime?          @map("paused_at")
   closedAt         DateTime?          @map("closed_at")
+  updatedAt          temporal.updatedAt() @map("updated_at")
+
 
   location Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
   openedBy User         @relation("QueueOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
